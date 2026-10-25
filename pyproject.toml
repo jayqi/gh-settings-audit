@@ -1,0 +1,71 @@
+[project]
+name = "gh-settings-audit"
+version = "0.1.0"
+description = "Check a GitHub repository's settings and default-branch rules against preferred values."
+readme = "README.md"
+authors = [
+    { name = "Jay Qi", email = "jayqi@users.noreply.github.com" }
+]
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+gh-settings-audit = "gh_settings_audit.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "zizmor",
+    { include-group = "tests" },
+    { include-group = "typecheck" },
+]
+tests = [
+    "coverage",
+    "pytest-cov",
+    "pytest",
+]
+typecheck = [
+    "ty",
+]
+
+## TOOLS
+
+[tool.uv]
+exclude-newer = "7 days"
+
+[tool.ruff]
+line-length = 99
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E", # Pyflakes
+  "F", # Pycodestyle
+  "I", # isort
+]
+unfixable = ["F"]
+
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+
+[tool.ty.src]
+include = ["src"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--cov=gh_settings_audit --cov-report=term --cov-report=html --cov-report=xml"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["gh_settings_audit"]
+
+[tool.coverage.paths]
+gh_settings_audit = [
+  "src/gh_settings_audit/",
+  "*/site-packages/gh_settings_audit/"
+]

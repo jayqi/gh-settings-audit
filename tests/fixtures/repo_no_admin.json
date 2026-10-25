@@ -1,0 +1,9 @@
+{
+  "allow_merge_commit": null,
+  "allow_update_branch": null,
+  "default_branch": "trunk",
+  "delete_branch_on_merge": null,
+  "full_name": "cli/cli",
+  "squash_merge_commit_message": null,
+  "squash_merge_commit_title": null
+}
