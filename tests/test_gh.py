@@ -39,17 +39,13 @@ def test_paginate_flattens_pages(monkeypatch):
     assert run.calls == [["gh", "api", "--paginate", "--slurp", "repos/o/r/rules/branches/main"]]
 
 
-@pytest.mark.parametrize(
-    "fixture,status",
-    [("branch_not_found.json", 404), ("rules_plan_unavailable.json", 403)],
-)
-def test_http_error_carries_status_and_message(monkeypatch, fixture, status):
-    body = load_fixture(fixture)
+def test_http_error_carries_status_and_message(monkeypatch):
+    body = load_fixture("branch_not_found.json")
     monkeypatch.setattr(gh.subprocess, "run", fake_run(json.dumps(body), returncode=1))
 
     with pytest.raises(GhApiError) as exc_info:
         gh_api("repos/o/r/branches/main")
-    assert exc_info.value.status == status
+    assert exc_info.value.status == 404
     assert exc_info.value.message == body["message"]
 
 

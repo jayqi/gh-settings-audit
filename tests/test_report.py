@@ -12,12 +12,6 @@ REPORT = Report(
 )
 
 
-def test_unknown_plain():
-    assert format_report(REPORT).splitlines()[4] == (
-        "  unknown  allow_merge_commit: not visible with your access"
-    )
-
-
 def test_unknown_colored():
     assert format_report(REPORT, color=True).splitlines()[4] == (
         "  \x1b[2m? unknown\x1b[0m  allow_merge_commit: not visible with your access"

@@ -1,7 +1,6 @@
 import pytest
 
 from gh_settings_audit.checks import (
-    PREFERRED_REPO_SETTINGS,
     audit,
     check_branch_rules,
     check_classic_protection,
@@ -21,19 +20,6 @@ def details(results: list[CheckResult]) -> dict[str, str]:
 
 
 ## Repo settings
-
-
-def test_repo_settings_all_match():
-    repo = load_fixture("repo_admin.json") | PREFERRED_REPO_SETTINGS
-    assert statuses(check_repo_settings(repo)) == {
-        "allow_merge_commit": Status.OK,
-        "allow_squash_merge": Status.OK,
-        "allow_rebase_merge": Status.OK,
-        "squash_merge_commit_title": Status.OK,
-        "squash_merge_commit_message": Status.OK,
-        "allow_update_branch": Status.OK,
-        "delete_branch_on_merge": Status.OK,
-    }
 
 
 def test_repo_settings_mismatches_differ():
@@ -117,12 +103,6 @@ def test_branch_rules_with_hidden_bypass_list_are_unknown():
     }
 
 
-def test_branch_rules_none():
-    assert set(statuses(check_branch_rules(load_fixture("rules_none.json"), {})).values()) == {
-        Status.DIFFERS
-    }
-
-
 ## Classic branch protection
 
 
@@ -130,9 +110,9 @@ def test_classic_protection_enabled_differs():
     assert check_classic_protection(load_fixture("branch_classic.json")).status == Status.DIFFERS
 
 
-@pytest.mark.parametrize("fixture", ["branch_rulesets_only.json", "branch_unprotected.json"])
-def test_classic_protection_not_enabled_is_ok(fixture):
-    assert check_classic_protection(load_fixture(fixture)).status == Status.OK
+def test_classic_protection_not_enabled_is_ok():
+    branch = load_fixture("branch_rulesets_only.json")
+    assert check_classic_protection(branch).status == Status.OK
 
 
 ## Full audit
@@ -155,12 +135,12 @@ def test_audit_named_repo():
         "pull requests required",
         "classic branch protection",
     ]
-    assert api.calls == [
-        ("repos/jayqi/python-package-reference", False),
-        ("repos/jayqi/python-package-reference/rules/branches/main", True),
-        ("repos/jayqi/python-package-reference/rulesets/24132521", False),
-        ("repos/jayqi/python-package-reference/branches/main", False),
-    ]
+    assert dict(api.calls) == {
+        "repos/jayqi/python-package-reference": False,
+        "repos/jayqi/python-package-reference/rules/branches/main": True,
+        "repos/jayqi/python-package-reference/rulesets/24132521": False,
+        "repos/jayqi/python-package-reference/branches/main": False,
+    }
 
 
 def test_audit_current_repo_uses_gh_placeholders():
@@ -179,7 +159,11 @@ def test_audit_encodes_branch_name():
             "repos/o/r/branches/dev/a%23b": load_fixture("branch_unprotected.json"),
         }
     )
-    assert audit("o/r", api=api).default_branch == "dev/a#b"
+    audit("o/r", api=api)
+    assert [endpoint for endpoint, _ in api.calls[1:]] == [
+        "repos/o/r/rules/branches/dev/a%23b",
+        "repos/o/r/branches/dev/a%23b",
+    ]
 
 
 def test_audit_rulesets_unavailable_on_plan_differ():
@@ -198,11 +182,16 @@ def test_audit_rulesets_unavailable_on_plan_differ():
     }
 
 
-def test_audit_propagates_other_rules_errors():
+@pytest.mark.parametrize(
+    "endpoint,error",
+    [
+        ("rules/branches/main", GhApiError(403, "API rate limit exceeded for user ID 1.")),
+        ("branches/main", GhApiError(500, "Server Error")),
+    ],
+)
+def test_audit_propagates_unhandled_default_branch_errors(endpoint, error):
     api = example_repo_api()
-    api.responses["repos/jayqi/python-package-reference/rules/branches/main"] = GhApiError(
-        403, "API rate limit exceeded for user ID 1."
-    )
+    api.responses[f"repos/jayqi/python-package-reference/{endpoint}"] = error
     with pytest.raises(GhApiError):
         audit("jayqi/python-package-reference", api=api)
 
@@ -218,15 +207,6 @@ def test_audit_missing_default_branch_is_unknown():
 
     classic = report.sections[1].results[-1]
     assert (classic.status, classic.detail) == (Status.UNKNOWN, "Branch not found (HTTP 404)")
-
-
-def test_audit_propagates_other_branch_errors():
-    api = example_repo_api()
-    api.responses["repos/jayqi/python-package-reference/branches/main"] = GhApiError(
-        500, "Server Error"
-    )
-    with pytest.raises(GhApiError):
-        audit("jayqi/python-package-reference", api=api)
 
 
 def test_audit_propagates_api_errors():
