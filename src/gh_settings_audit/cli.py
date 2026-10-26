@@ -1,4 +1,5 @@
 import argparse
+import os
 import re
 import sys
 
@@ -20,7 +21,7 @@ def main(argv: list[str] | None = None, api: Api = gh_api) -> int:
         prog=PROG,
         description=(
             "Check a GitHub repository's settings and default-branch rules against preferred "
-            "values. Exits 0 whenever a report is produced, even if checks fail."
+            "values. Exits 0 whenever a report is produced, even if settings differ."
         ),
     )
     parser.add_argument(
@@ -37,5 +38,6 @@ def main(argv: list[str] | None = None, api: Api = gh_api) -> int:
     except GhApiError as e:
         print(f"{PROG}: error: {e}", file=sys.stderr)
         return 1
-    print(format_report(report), end="")
+    color = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
+    print(format_report(report, color=color), end="")
     return 0

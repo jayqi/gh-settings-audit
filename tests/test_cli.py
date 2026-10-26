@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 
 from gh_settings_audit.cli import main
@@ -9,25 +11,25 @@ Repository: jayqi/python-package-reference
 Default branch: main
 
 Repo settings
-  PASS     allow_merge_commit: false
-  FAIL     squash_merge_commit_title: "COMMIT_OR_PR_TITLE" (expected "PR_TITLE")
-  FAIL     squash_merge_commit_message: "COMMIT_MESSAGES" (expected "BLANK")
-  PASS     allow_update_branch: true
-  PASS     delete_branch_on_merge: true
+  ok       allow_merge_commit: false
+  differs  squash_merge_commit_title: "COMMIT_OR_PR_TITLE" (preferred "PR_TITLE")
+  differs  squash_merge_commit_message: "COMMIT_MESSAGES" (preferred "BLANK")
+  ok       allow_update_branch: true
+  ok       delete_branch_on_merge: true
 
 Default branch rules
-  PASS     has protection: 3 active rules from rulesets
-  PASS     no force pushes: non_fast_forward rule present
-  FAIL     linear history: no required_linear_history rule
-  FAIL     require pull requests: no pull_request rule
-  WARN     classic branch protection: in use; migrate to rulesets
+  ok       has protection: 3 active rules from rulesets
+  ok       no force pushes: non_fast_forward rule present
+  differs  linear history: no required_linear_history rule
+  differs  require pull requests: no pull_request rule
+  differs  classic branch protection: in use; rulesets preferred
 
-Summary: 5 PASS, 4 FAIL, 1 WARN, 0 UNKNOWN
+Summary: ok: 5, differs: 5, unknown: 0
 """
 
 
-def test_report_printed_and_exit_zero_despite_failures(capsys):
-    api = FakeApi(
+def admin_repo_api() -> FakeApi:
+    return FakeApi(
         {
             "repos/jayqi/python-package-reference": load_fixture("repo_admin.json"),
             "repos/jayqi/python-package-reference/rules/branches/main": load_fixture(
@@ -39,7 +41,30 @@ def test_report_printed_and_exit_zero_despite_failures(capsys):
         }
     )
 
-    assert main(["jayqi/python-package-reference"], api=api) == 0
+
+def test_report_printed_and_exit_zero_despite_differences(capsys):
+    assert main(["jayqi/python-package-reference"], api=admin_repo_api()) == 0
+    assert capsys.readouterr().out == EXPECTED_REPORT
+
+
+def test_terminal_output_has_colored_symbols(capsys, monkeypatch):
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+
+    assert main(["jayqi/python-package-reference"], api=admin_repo_api()) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[4] == "  \x1b[32m✓ ok\x1b[0m       allow_merge_commit: false"
+    assert lines[5] == (
+        "  \x1b[33m~ differs\x1b[0m  squash_merge_commit_title: "
+        '"COMMIT_OR_PR_TITLE" (preferred "PR_TITLE")'
+    )
+
+
+def test_terminal_output_respects_no_color(capsys, monkeypatch):
+    monkeypatch.setenv("NO_COLOR", "1")
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+
+    assert main(["jayqi/python-package-reference"], api=admin_repo_api()) == 0
     assert capsys.readouterr().out == EXPECTED_REPORT
 
 

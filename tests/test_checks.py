@@ -1,7 +1,7 @@
 import pytest
 
 from gh_settings_audit.checks import (
-    EXPECTED_REPO_SETTINGS,
+    PREFERRED_REPO_SETTINGS,
     audit,
     check_branch_rules,
     check_classic_protection,
@@ -20,30 +20,30 @@ def statuses(results: list[CheckResult]) -> dict[str, Status]:
 
 
 def test_repo_settings_all_match():
-    repo = load_fixture("repo_admin.json") | EXPECTED_REPO_SETTINGS
+    repo = load_fixture("repo_admin.json") | PREFERRED_REPO_SETTINGS
     assert statuses(check_repo_settings(repo)) == {
-        "allow_merge_commit": Status.PASS,
-        "squash_merge_commit_title": Status.PASS,
-        "squash_merge_commit_message": Status.PASS,
-        "allow_update_branch": Status.PASS,
-        "delete_branch_on_merge": Status.PASS,
+        "allow_merge_commit": Status.OK,
+        "squash_merge_commit_title": Status.OK,
+        "squash_merge_commit_message": Status.OK,
+        "allow_update_branch": Status.OK,
+        "delete_branch_on_merge": Status.OK,
     }
 
 
-def test_repo_settings_mismatches_fail():
+def test_repo_settings_mismatches_differ():
     assert statuses(check_repo_settings(load_fixture("repo_admin.json"))) == {
-        "allow_merge_commit": Status.PASS,
-        "squash_merge_commit_title": Status.FAIL,
-        "squash_merge_commit_message": Status.FAIL,
-        "allow_update_branch": Status.PASS,
-        "delete_branch_on_merge": Status.PASS,
+        "allow_merge_commit": Status.OK,
+        "squash_merge_commit_title": Status.DIFFERS,
+        "squash_merge_commit_message": Status.DIFFERS,
+        "allow_update_branch": Status.OK,
+        "delete_branch_on_merge": Status.OK,
     }
 
 
-def test_repo_settings_mismatch_shows_actual_and_expected():
+def test_repo_settings_mismatch_shows_actual_and_preferred():
     results = check_repo_settings(load_fixture("repo_admin.json"))
     title = next(r for r in results if r.name == "squash_merge_commit_title")
-    assert title.detail == '"COMMIT_OR_PR_TITLE" (expected "PR_TITLE")'
+    assert title.detail == '"COMMIT_OR_PR_TITLE" (preferred "PR_TITLE")'
 
 
 def test_repo_settings_hidden_without_admin_are_unknown():
@@ -56,28 +56,28 @@ def test_repo_settings_hidden_without_admin_are_unknown():
 
 def test_branch_rules_all_required_present():
     assert statuses(check_branch_rules(load_fixture("rules_all_required.json"))) == {
-        "has protection": Status.PASS,
-        "no force pushes": Status.PASS,
-        "linear history": Status.PASS,
-        "require pull requests": Status.PASS,
+        "has protection": Status.OK,
+        "no force pushes": Status.OK,
+        "linear history": Status.OK,
+        "require pull requests": Status.OK,
     }
 
 
 def test_branch_rules_partial():
     assert statuses(check_branch_rules(load_fixture("rules_partial.json"))) == {
-        "has protection": Status.PASS,
-        "no force pushes": Status.PASS,
-        "linear history": Status.FAIL,
-        "require pull requests": Status.FAIL,
+        "has protection": Status.OK,
+        "no force pushes": Status.OK,
+        "linear history": Status.DIFFERS,
+        "require pull requests": Status.DIFFERS,
     }
 
 
 def test_branch_rules_none():
     assert statuses(check_branch_rules(load_fixture("rules_none.json"))) == {
-        "has protection": Status.FAIL,
-        "no force pushes": Status.FAIL,
-        "linear history": Status.FAIL,
-        "require pull requests": Status.FAIL,
+        "has protection": Status.DIFFERS,
+        "no force pushes": Status.DIFFERS,
+        "linear history": Status.DIFFERS,
+        "require pull requests": Status.DIFFERS,
     }
 
 
@@ -86,14 +86,14 @@ def test_branch_rules_none():
 PROTECTION_ENDPOINT = "repos/o/r/branches/main/protection"
 
 
-def test_classic_protection_present_warns():
+def test_classic_protection_present_differs():
     api = FakeApi({PROTECTION_ENDPOINT: load_fixture("protection_present.json")})
-    assert check_classic_protection(api, "o/r", "main").status == Status.WARN
+    assert check_classic_protection(api, "o/r", "main").status == Status.DIFFERS
 
 
-def test_classic_protection_absent_passes():
+def test_classic_protection_absent_is_ok():
     api = FakeApi({PROTECTION_ENDPOINT: GhApiError(404, "Branch not protected")})
-    assert check_classic_protection(api, "o/r", "main").status == Status.PASS
+    assert check_classic_protection(api, "o/r", "main").status == Status.OK
 
 
 @pytest.mark.parametrize(
@@ -172,7 +172,7 @@ def test_audit_rules_forbidden_are_unknown():
         "no force pushes": Status.UNKNOWN,
         "linear history": Status.UNKNOWN,
         "require pull requests": Status.UNKNOWN,
-        "classic branch protection": Status.WARN,
+        "classic branch protection": Status.DIFFERS,
     }
 
 

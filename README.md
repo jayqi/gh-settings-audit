@@ -29,38 +29,39 @@ Repository: jayqi/python-package-reference
 Default branch: main
 
 Repo settings
-  PASS     allow_merge_commit: false
-  FAIL     squash_merge_commit_title: "COMMIT_OR_PR_TITLE" (expected "PR_TITLE")
-  FAIL     squash_merge_commit_message: "COMMIT_MESSAGES" (expected "BLANK")
-  PASS     allow_update_branch: true
-  PASS     delete_branch_on_merge: true
+  ok       allow_merge_commit: false
+  differs  squash_merge_commit_title: "COMMIT_OR_PR_TITLE" (preferred "PR_TITLE")
+  differs  squash_merge_commit_message: "COMMIT_MESSAGES" (preferred "BLANK")
+  ok       allow_update_branch: true
+  ok       delete_branch_on_merge: true
 
 Default branch rules
-  FAIL     has protection: no ruleset rules apply
-  FAIL     no force pushes: no non_fast_forward rule
-  FAIL     linear history: no required_linear_history rule
-  FAIL     require pull requests: no pull_request rule
-  PASS     classic branch protection: not used
+  differs  has protection: no ruleset rules apply
+  differs  no force pushes: no non_fast_forward rule
+  differs  linear history: no required_linear_history rule
+  differs  require pull requests: no pull_request rule
+  ok       classic branch protection: not used
 
-Summary: 4 PASS, 6 FAIL, 0 WARN, 0 UNKNOWN
+Summary: ok: 4, differs: 6, unknown: 0
 ```
 
 Each check line starts with one of these statuses:
 
-- `PASS`: matches the preferred value.
-- `FAIL`: doesn't match.
-- `WARN`: works, but should change.
-- `UNKNOWN`: couldn't be read with your access or the repository's plan.
+- `ok`: matches the preferred value.
+- `differs`: doesn't match the preferred value. This may be deliberate.
+- `unknown`: couldn't be read with your access or the repository's plan.
 
-The exit code is 0 whenever a report is produced, even if checks fail. It's nonzero only when no report could be produced, for example when the repository can't be resolved or an API call fails.
+In a terminal, statuses also get a symbol and color (`✓` green, `~` yellow, `?` dim). Piped output is plain text. Set `NO_COLOR` to turn off color in a terminal.
+
+The exit code is 0 whenever a report is produced, even if settings differ. It's nonzero only when no report could be produced, for example when the repository can't be resolved or an API call fails.
 
 ## Checks
 
-The expected values are defined in [`checks.py`](src/gh_settings_audit/checks.py).
+The preferred values are defined in [`checks.py`](src/gh_settings_audit/checks.py).
 
 **Repo settings** (from `GET /repos/{owner}/{repo}`):
 
-| Field | Expected |
+| Field | Preferred |
 |---|---|
 | `allow_merge_commit` | `false` |
 | `squash_merge_commit_title` | `"PR_TITLE"` |
@@ -70,7 +71,7 @@ The expected values are defined in [`checks.py`](src/gh_settings_audit/checks.py
 
 Reading these fields requires admin access to the repository.
 
-**Default-branch rules** come from rulesets, using the active rules GitHub reports for the default branch (`GET /repos/{owner}/{repo}/rules/branches/{branch}`). This includes rules from both repository and organization rulesets. Each check passes if a rule of that type applies:
+**Default-branch rules** come from rulesets, using the active rules GitHub reports for the default branch (`GET /repos/{owner}/{repo}/rules/branches/{branch}`). This includes rules from both repository and organization rulesets. Each check is `ok` if a rule of that type applies:
 
 | Check | Rule type |
 |---|---|
@@ -79,7 +80,7 @@ Reading these fields requires admin access to the repository.
 | linear history | `required_linear_history` |
 | require pull requests | `pull_request` |
 
-**Classic branch protection** isn't checked rule by rule. If the default branch uses it, the report warns you to migrate to rulesets, which you can do under Settings → Rulesets. Seeing classic protection requires admin access; without it, this check is `UNKNOWN`.
+**Classic branch protection** isn't checked rule by rule. If the default branch uses it, the check `differs`, since rulesets are preferred. You can migrate under Settings → Rulesets. Seeing classic protection requires admin access; without it, this check is `unknown`.
 
 To see the rules GitHub applies to a repository's default branch yourself:
 
