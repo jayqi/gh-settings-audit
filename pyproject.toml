@@ -44,8 +44,8 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = [
-  "E", # Pyflakes
-  "F", # Pycodestyle
+  "E", # pycodestyle
+  "F", # Pyflakes
   "I", # isort
 ]
 unfixable = ["F"]

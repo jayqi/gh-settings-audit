@@ -16,11 +16,29 @@ class FakeApi:
 
     def __init__(self, responses: dict[str, Any]):
         self.responses = responses
-        self.calls: list[str] = []
+        self.calls: list[tuple[str, bool]] = []
 
     def __call__(self, endpoint: str, paginate: bool = False) -> Any:
-        self.calls.append(endpoint)
+        self.calls.append((endpoint, paginate))
         response = self.responses[endpoint]
         if isinstance(response, GhApiError):
             raise response
         return response
+
+
+def example_repo_api(repo_endpoint: str = "repos/jayqi/python-package-reference") -> FakeApi:
+    """jayqi/python-package-reference with a bypassable ruleset and classic protection."""
+    return FakeApi(
+        {
+            repo_endpoint: load_fixture("repo_admin.json"),
+            "repos/jayqi/python-package-reference/rules/branches/main": load_fixture(
+                "rules_partial.json"
+            ),
+            "repos/jayqi/python-package-reference/rulesets/24132521": load_fixture(
+                "ruleset_bypass_always.json"
+            ),
+            "repos/jayqi/python-package-reference/branches/main": load_fixture(
+                "branch_classic.json"
+            ),
+        }
+    )

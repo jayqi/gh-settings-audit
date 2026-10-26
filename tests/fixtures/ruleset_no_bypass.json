@@ -1,0 +1,9 @@
+{
+  "bypass_actors": [],
+  "current_user_can_bypass": "never",
+  "enforcement": "active",
+  "id": 25855599,
+  "name": "main",
+  "source": "jayqi/gh-settings-audit",
+  "source_type": "Repository"
+}

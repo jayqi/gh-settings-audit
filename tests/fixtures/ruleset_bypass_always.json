@@ -1,0 +1,15 @@
+{
+  "bypass_actors": [
+    {
+      "actor_id": 2,
+      "actor_type": "RepositoryRole",
+      "bypass_mode": "always"
+    }
+  ],
+  "current_user_can_bypass": "always",
+  "enforcement": "active",
+  "id": 24132521,
+  "name": "Tests Pass",
+  "source": "drivendataorg/cloudpathlib",
+  "source_type": "Repository"
+}

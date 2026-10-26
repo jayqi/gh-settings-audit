@@ -24,7 +24,7 @@ def gh_api(endpoint: str, paginate: bool = False) -> Any:
     """
     args = ["gh", "api", *(["--paginate", "--slurp"] if paginate else []), endpoint]
     try:
-        proc = subprocess.run(args, capture_output=True, text=True)
+        proc = subprocess.run(args, capture_output=True, encoding="utf-8")
     except FileNotFoundError:
         raise GhApiError(
             None, "gh not found; install GitHub CLI from https://cli.github.com/"

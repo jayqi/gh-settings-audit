@@ -1,0 +1,12 @@
+{
+  "name": "main",
+  "protected": true,
+  "protection": {
+    "enabled": true,
+    "required_status_checks": {
+      "checks": [],
+      "contexts": [],
+      "enforcement_level": "non_admins"
+    }
+  }
+}

@@ -40,22 +40,17 @@ def test_paginate_flattens_pages(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "fixture,message",
-    [
-        ("protection_absent.json", "Branch not protected"),
-        ("protection_no_admin.json", "Not Found"),
-    ],
+    "fixture,status",
+    [("branch_not_found.json", 404), ("rules_plan_unavailable.json", 403)],
 )
-def test_http_error_carries_status_and_message(monkeypatch, fixture, message):
-    body = (FIXTURES_DIR / fixture).read_text()
-    monkeypatch.setattr(
-        gh.subprocess, "run", fake_run(body, returncode=1, stderr=f"gh: {message} (HTTP 404)")
-    )
+def test_http_error_carries_status_and_message(monkeypatch, fixture, status):
+    body = load_fixture(fixture)
+    monkeypatch.setattr(gh.subprocess, "run", fake_run(json.dumps(body), returncode=1))
 
     with pytest.raises(GhApiError) as exc_info:
-        gh_api("repos/o/r/branches/main/protection")
-    assert exc_info.value.status == 404
-    assert exc_info.value.message == message
+        gh_api("repos/o/r/branches/main")
+    assert exc_info.value.status == status
+    assert exc_info.value.message == body["message"]
 
 
 def test_paginated_http_error_carries_status_and_message(monkeypatch):
@@ -87,4 +82,6 @@ def test_missing_gh_raises_gh_api_error(monkeypatch):
     with pytest.raises(GhApiError) as exc_info:
         gh_api("repos/o/r")
     assert exc_info.value.status is None
-    assert "gh" in exc_info.value.message
+    assert (
+        exc_info.value.message == "gh not found; install GitHub CLI from https://cli.github.com/"
+    )

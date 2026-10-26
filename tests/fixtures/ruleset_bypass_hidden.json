@@ -1,0 +1,8 @@
+{
+  "current_user_can_bypass": "never",
+  "enforcement": "active",
+  "id": 14390474,
+  "name": "branches-main",
+  "source": "astral-sh",
+  "source_type": "Organization"
+}
