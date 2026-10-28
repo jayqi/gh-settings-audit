@@ -23,7 +23,11 @@ PREFERRED_RULE_TYPES: dict[str, str] = {
     "non_fast_forward": "force pushes blocked",
     "required_linear_history": "linear history required",
     "pull_request": "pull requests required",
+    "required_status_checks": "status checks required",
 }
+
+# Checks of required_status_checks rule parameters, shown under "status checks required"
+STATUS_CHECK_SETTINGS = ["branches up to date before merging", "specific status checks listed"]
 
 # Start of the 403 message for rulesets on a private repo without a paid plan
 PLAN_UNAVAILABLE_MESSAGE = "Upgrade to GitHub Pro"
@@ -55,25 +59,62 @@ def check_branch_rules(
     """
     results = []
     for rule_type, name in PREFERRED_RULE_TYPES.items():
-        providers = [rulesets[rule["ruleset_id"]] for rule in rules if rule["type"] == rule_type]
+        providers = [
+            (rule, rulesets[rule["ruleset_id"]]) for rule in rules if rule["type"] == rule_type
+        ]
+        enforced = [rule for rule, ruleset in providers if ruleset.get("bypass_actors") == []]
         if not providers:
             result = CheckResult(Status.DIFFERS, name, f"no {rule_type} rule")
-        elif any(ruleset.get("bypass_actors") == [] for ruleset in providers):
+        elif enforced:
             result = CheckResult(Status.OK, name, f"{rule_type} rule present")
         # GitHub omits bypass_actors without admin access
-        elif any(ruleset.get("bypass_actors") is None for ruleset in providers):
+        elif any(ruleset.get("bypass_actors") is None for _, ruleset in providers):
             detail = f"{rule_type} rule present; bypass list not visible"
             result = CheckResult(Status.UNKNOWN, name, detail)
         else:
             bypasses = "; ".join(
                 f'ruleset "{ruleset["name"]}": '
                 + ", ".join(sorted({actor["bypass_mode"] for actor in ruleset["bypass_actors"]}))
-                for ruleset in providers
+                for _, ruleset in providers
             )
             detail = f"{rule_type} rule present, but bypassable ({bypasses})"
             result = CheckResult(Status.DIFFERS, name, detail)
         results.append(result)
+        if rule_type == "required_status_checks":
+            results += check_status_check_settings(result, enforced)
     return results
+
+
+def check_status_check_settings(
+    parent: CheckResult, enforced: list[dict[str, Any]]
+) -> list[CheckResult]:
+    """Check the parameters of enforced required_status_checks rules, under `parent`."""
+    strict_name, listed_name = STATUS_CHECK_SETTINGS
+    if parent.status != Status.OK:
+        detail = f"depends on {parent.name}"
+        return [
+            CheckResult(parent.status, name, detail, child=True) for name in STATUS_CHECK_SETTINGS
+        ]
+
+    if any(rule["parameters"]["strict_required_status_checks_policy"] for rule in enforced):
+        strict = CheckResult(Status.OK, strict_name, "strict policy set", child=True)
+    else:
+        strict = CheckResult(Status.DIFFERS, strict_name, "strict policy not set", child=True)
+
+    contexts = sorted(
+        {
+            check["context"]
+            for rule in enforced
+            for check in rule["parameters"]["required_status_checks"]
+        }
+    )
+    if contexts:
+        count = f"{len(contexts)} check{'s' if len(contexts) != 1 else ''}"
+        detail = f"{count} ({', '.join(contexts)})"
+        listed = CheckResult(Status.OK, listed_name, detail, child=True)
+    else:
+        listed = CheckResult(Status.DIFFERS, listed_name, "no checks listed", child=True)
+    return [strict, listed]
 
 
 def check_classic_protection(branch: dict[str, Any]) -> CheckResult:
@@ -94,6 +135,9 @@ def check_default_branch(api: Api, repo: str, branch: str) -> list[CheckResult]:
         detail = "rulesets not available on this repo's plan"
         results = [
             CheckResult(Status.DIFFERS, name, detail) for name in PREFERRED_RULE_TYPES.values()
+        ]
+        results += [
+            CheckResult(Status.DIFFERS, name, detail, child=True) for name in STATUS_CHECK_SETTINGS
         ]
     else:
         ruleset_ids = sorted(

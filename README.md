@@ -42,9 +42,12 @@ Default branch rules
   differs  force pushes blocked: non_fast_forward rule present, but bypassable (ruleset "Tests Pass": always)
   differs  linear history required: no required_linear_history rule
   differs  pull requests required: no pull_request rule
+  differs  status checks required: required_status_checks rule present, but bypassable (ruleset "Tests Pass": always)
+  differs    ↳ branches up to date before merging: depends on status checks required
+  differs    ↳ specific status checks listed: depends on status checks required
   ok       classic branch protection: not used
 
-Summary: ok: 6, differs: 6, unknown: 0
+Summary: ok: 6, differs: 9, unknown: 0
 ```
 
 Each check line starts with one of these statuses:
@@ -52,6 +55,8 @@ Each check line starts with one of these statuses:
 - `ok`: matches the preferred value.
 - `differs`: doesn't match the preferred value. This may be deliberate.
 - `unknown`: couldn't be read with your access or the repository's plan.
+
+A check name starting with `↳` is a setting of the check above it. If the check above isn't `ok`, the `↳` checks have the same status.
 
 In a terminal, statuses also get a symbol and color (`✓` green, `~` yellow, `?` dim). Piped output is plain text. Set `NO_COLOR` to turn off color in a terminal.
 
@@ -83,6 +88,14 @@ Reading these fields requires write access to the repository.
 | force pushes blocked | `non_fast_forward` |
 | linear history required | `required_linear_history` |
 | pull requests required | `pull_request` |
+| status checks required | `required_status_checks` |
+
+Two more checks are shown under "status checks required" and read that rule's settings from the rulesets that count:
+
+| Check | `ok` when |
+|---|---|
+| branches up to date before merging | "Require branches to be up to date before merging" is on (`strict_required_status_checks_policy`) |
+| specific status checks listed | at least one status check is listed; GitHub ignores the up-to-date setting otherwise |
 
 Bypass is set per ruleset, and covers every rule in that ruleset. When every ruleset providing a rule allows bypass, the check shows `differs` and names those rulesets and their bypass modes. Reading a ruleset's bypass list requires admin access; without it, the check is `unknown`. On a private repository whose plan doesn't support rulesets, these checks show `differs`.
 

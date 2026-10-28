@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 
 from gh_settings_audit.checks import (
@@ -58,6 +60,43 @@ def test_branch_rules_present_without_bypass():
         "force pushes blocked": Status.OK,
         "linear history required": Status.OK,
         "pull requests required": Status.OK,
+        "status checks required": Status.DIFFERS,
+        "branches up to date before merging": Status.DIFFERS,
+        "specific status checks listed": Status.DIFFERS,
+    }
+
+
+def test_status_check_settings_are_children_that_depend_on_rule():
+    results = check_branch_rules(
+        load_fixture("rules_no_bypass.json"), {25855599: load_fixture("ruleset_no_bypass.json")}
+    )
+    assert [(r.name, r.detail) for r in results if r.child] == [
+        ("branches up to date before merging", "depends on status checks required"),
+        ("specific status checks listed", "depends on status checks required"),
+    ]
+
+
+def test_status_check_settings_present_without_bypass():
+    results = check_branch_rules(
+        load_fixture("rules_partial.json"), {24132521: load_fixture("ruleset_no_bypass.json")}
+    )
+    assert statuses(results)["status checks required"] == Status.OK
+    assert [(r.name, r.status, r.detail) for r in results if r.child] == [
+        ("branches up to date before merging", Status.OK, "strict policy set"),
+        ("specific status checks listed", Status.OK, "2 checks (Code Quality, live-cloud-tests)"),
+    ]
+
+
+def test_status_check_settings_not_strict_or_empty_differ():
+    rules = copy.deepcopy(load_fixture("rules_partial.json"))
+    status_rule = next(r for r in rules if r["type"] == "required_status_checks")
+    status_rule["parameters"]["strict_required_status_checks_policy"] = False
+    status_rule["parameters"]["required_status_checks"] = []
+    results = check_branch_rules(rules, {24132521: load_fixture("ruleset_no_bypass.json")})
+
+    assert {r.name: (r.status, r.detail) for r in results if r.child} == {
+        "branches up to date before merging": (Status.DIFFERS, "strict policy not set"),
+        "specific status checks listed": (Status.DIFFERS, "no checks listed"),
     }
 
 
@@ -70,6 +109,9 @@ def test_branch_rules_bypassable_or_missing_differ():
         "force pushes blocked": Status.DIFFERS,
         "linear history required": Status.DIFFERS,
         "pull requests required": Status.DIFFERS,
+        "status checks required": Status.DIFFERS,
+        "branches up to date before merging": Status.DIFFERS,
+        "specific status checks listed": Status.DIFFERS,
     }
     assert details(results) == {
         "deletion blocked": 'deletion rule present, but bypassable (ruleset "Tests Pass": always)',
@@ -78,6 +120,11 @@ def test_branch_rules_bypassable_or_missing_differ():
         ),
         "linear history required": "no required_linear_history rule",
         "pull requests required": "no pull_request rule",
+        "status checks required": (
+            'required_status_checks rule present, but bypassable (ruleset "Tests Pass": always)'
+        ),
+        "branches up to date before merging": "depends on status checks required",
+        "specific status checks listed": "depends on status checks required",
     }
 
 
@@ -95,11 +142,23 @@ def test_branch_rules_with_hidden_bypass_list_are_unknown():
         load_fixture("rules_all_required.json"),
         {14390474: load_fixture("ruleset_bypass_hidden.json")},
     )
-    assert {(r.status, r.detail) for r in results} == {
-        (Status.UNKNOWN, "deletion rule present; bypass list not visible"),
-        (Status.UNKNOWN, "non_fast_forward rule present; bypass list not visible"),
-        (Status.UNKNOWN, "required_linear_history rule present; bypass list not visible"),
-        (Status.UNKNOWN, "pull_request rule present; bypass list not visible"),
+    assert details(results) == {
+        "deletion blocked": "deletion rule present; bypass list not visible",
+        "force pushes blocked": "non_fast_forward rule present; bypass list not visible",
+        "linear history required": "required_linear_history rule present; bypass list not visible",
+        "pull requests required": "pull_request rule present; bypass list not visible",
+        "status checks required": "no required_status_checks rule",
+        "branches up to date before merging": "depends on status checks required",
+        "specific status checks listed": "depends on status checks required",
+    }
+    assert statuses(results) == {
+        "deletion blocked": Status.UNKNOWN,
+        "force pushes blocked": Status.UNKNOWN,
+        "linear history required": Status.UNKNOWN,
+        "pull requests required": Status.UNKNOWN,
+        "status checks required": Status.DIFFERS,
+        "branches up to date before merging": Status.DIFFERS,
+        "specific status checks listed": Status.DIFFERS,
     }
 
 
@@ -133,6 +192,9 @@ def test_audit_named_repo():
         "force pushes blocked",
         "linear history required",
         "pull requests required",
+        "status checks required",
+        "branches up to date before merging",
+        "specific status checks listed",
         "classic branch protection",
     ]
     assert dict(api.calls) == {
@@ -174,11 +236,22 @@ def test_audit_rulesets_unavailable_on_plan_differ():
     )
     report = audit("jayqi/python-package-reference", api=api)
 
-    assert {(r.name, r.status, r.detail) for r in report.sections[1].results[:4]} == {
+    assert {(r.name, r.status, r.detail) for r in report.sections[1].results[:-1]} == {
         ("deletion blocked", Status.DIFFERS, "rulesets not available on this repo's plan"),
         ("force pushes blocked", Status.DIFFERS, "rulesets not available on this repo's plan"),
         ("linear history required", Status.DIFFERS, "rulesets not available on this repo's plan"),
         ("pull requests required", Status.DIFFERS, "rulesets not available on this repo's plan"),
+        ("status checks required", Status.DIFFERS, "rulesets not available on this repo's plan"),
+        (
+            "branches up to date before merging",
+            Status.DIFFERS,
+            "rulesets not available on this repo's plan",
+        ),
+        (
+            "specific status checks listed",
+            Status.DIFFERS,
+            "rulesets not available on this repo's plan",
+        ),
     }
 
 

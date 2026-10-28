@@ -27,9 +27,13 @@ EXPECTED_REPORT = "\n".join(
         'but bypassable (ruleset "Tests Pass": always)',
         "  differs  linear history required: no required_linear_history rule",
         "  differs  pull requests required: no pull_request rule",
+        "  differs  status checks required: required_status_checks rule present, "
+        'but bypassable (ruleset "Tests Pass": always)',
+        "  differs    ↳ branches up to date before merging: depends on status checks required",
+        "  differs    ↳ specific status checks listed: depends on status checks required",
         "  differs  classic branch protection: in use; rulesets preferred",
         "",
-        "Summary: ok: 5, differs: 7, unknown: 0",
+        "Summary: ok: 5, differs: 10, unknown: 0",
         "",
     ]
 )

@@ -14,6 +14,8 @@ class CheckResult:
     status: Status
     name: str
     detail: str
+    # Shown with an arrow under the preceding check
+    child: bool = False
 
 
 @dataclass(frozen=True)
@@ -52,7 +54,8 @@ def format_report(report: Report, color: bool = False) -> str:
     for section in report.sections:
         lines += ["", section.title]
         lines += [
-            f"  {format_status(result.status, color)}  {result.name}: {result.detail}"
+            f"  {format_status(result.status, color)}  {'  ↳ ' if result.child else ''}"
+            f"{result.name}: {result.detail}"
             for result in section.results
         ]
     counts = Counter(result.status for section in report.sections for result in section.results)
