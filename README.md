@@ -1,5 +1,8 @@
 # gh-settings-audit
 
+[![tests](https://github.com/jayqi/gh-settings-audit/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/jayqi/gh-settings-audit/actions/workflows/tests.yml?query=branch%3Amain)
+[![coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jayqi/gh-settings-audit/badges/coverage.json)](https://github.com/jayqi/gh-settings-audit/actions/workflows/tests.yml?query=branch%3Amain)
+
 Check one GitHub repository's settings and default-branch rules against my preferred values, and report where they differ. It only reports; it doesn't change anything.
 
 ## Requirements
