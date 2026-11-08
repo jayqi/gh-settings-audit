@@ -37,7 +37,7 @@ def gh_api(endpoint: str, paginate: bool = False) -> Any:
             if paginate:
                 (body,) = body
             status, message = int(body["status"]), body["message"]
-        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+        except json.JSONDecodeError, KeyError, TypeError, ValueError:
             raise GhApiError(None, proc.stderr.strip()) from None
         raise GhApiError(status, message)
     data = json.loads(proc.stdout)

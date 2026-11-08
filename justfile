@@ -1,4 +1,4 @@
-# Keep in sync with just-version in .github/workflows/tests.yml
+# Keep in sync with just-version in .github/workflows/*.yml
 set minimum-version := '1.55.0'
 
 python := shell("cat .python-version")
@@ -26,6 +26,10 @@ format *args:
 typecheck python=python *args:
     uv run --python={{python}} --isolated --no-dev --group typecheck -- \
         ty check --python-version={{python}} {{args}}
+
+# Audit GitHub Actions workflows with zizmor (passes through args)
+zizmor *args:
+    uvx --exclude-newer "7 days" zizmor .github/ {{args}}
 
 # Run test suite (passes through args)
 [arg("python", long)]
