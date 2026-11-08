@@ -7,7 +7,7 @@ authors = [
     { name = "Jay Qi", email = "jayqi@users.noreply.github.com" }
 ]
 license = "MIT"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = []
 
 [project.scripts]
@@ -20,7 +20,6 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "ruff",
-    "zizmor",
     { include-group = "tests" },
     { include-group = "typecheck" },
 ]
